@@ -2,30 +2,32 @@
 Below is an example implementation of the NuSQuIDSDecay class.
 An example neutrino flux (kaon/pion) is read in over a specified
 range and binning in cos(zenith angle) and energy. NuSQuIDSDecay
-is then used to evolve this flux through the earth to the South 
+is then used to evolve this flux through the earth to the South
 Pole. Both the initial and final fluxes are written to text files
-which can be used to produce oscillograms. 
+which can be used to produce oscillograms.
 	The neutrinos here are majorana, and incoherent interactions,
 tau regeneration, and decay regeneration effects are all being
-simulated. We consider a simplified decay scenario where 
+simulated. We consider a simplified decay scenario where
 all mass states except m_4 are stable, the only
 decay channel is from m_4 to m_3, and the only non-zero mixing
 angle between the light mass states and m_4 is theta_24. The phi
-mass is always assumed to be zero. All m_4->m_3 decay processes 
-({CPP,CVP}) are allowed, but they are 
-computed internally by NuSQuIDSDecay as functions of the lagrangian 
+mass is always assumed to be zero. All m_4->m_3 decay processes
+({CPP,CVP}) are allowed, but they are
+computed internally by NuSQuIDSDecay as functions of the lagrangian
 coupling matrix g_ij which we supply to the constructor. The couplings
 here are set to be scalar, though the user is free to specify pseudoscalar
-couplings as an alternative (recall that this simulation applies to 
-pure scalar or pure pseudoscalar couplings, and not to mixtures). 
+couplings as an alternative (recall that this simulation applies to
+pure scalar or pure pseudoscalar couplings, and not to mixtures).
 The coupling constructor assumes majorana neutrinos
-automatically, so we do not need to set the majorana flag. 
+automatically, so we do not need to set the majorana flag.
 //==========================================================================*/
 
 #include <vector>
 #include <iostream>
 #include <string>
 #include <limits>
+#include <sstream>
+#include <iomanip>
 #include <nuSQuIDS/nuSQuIDS.h>
 #include <nuSQuIDS/marray.h>
 #include <nuSQuIDS/tools.h>
@@ -37,11 +39,11 @@ using namespace nusquids;
 void WriteFlux(std::shared_ptr<nuSQUIDSAtm<nuSQUIDSDecay>> nusquids, std::string fname){
 	enum {NU_E,NU_MU,NU_TAU};
 	enum {NEUTRINO,ANTINEUTRINO};
+	std::cout <<"Writing Flux\n";
 	std::ofstream ioutput("../output/" + fname + ".dat");
 	for(double costh : nusquids->GetCosthRange()){
 		for(double enu : nusquids->GetERange()){
-		        std::cout << costh <<" tt" <<  enu << "\n";
-		        ioutput << costh << " ";
+			ioutput << costh << " ";
 			ioutput << enu << " ";
 			ioutput << nusquids->EvalFlavor(NU_MU,costh,enu,NEUTRINO) << " ";
 			ioutput << nusquids->EvalFlavor(NU_MU,costh,enu,ANTINEUTRINO) << " ";
@@ -49,15 +51,19 @@ void WriteFlux(std::shared_ptr<nuSQUIDSAtm<nuSQUIDSDecay>> nusquids, std::string
 		}
 	}
 	ioutput.close();
+	std::cout << "Wrote Flux\n";
 }
 
 //Convenience function to read a flux file into an marray input for nuSQuIDS.
-void ReadFlux(std::shared_ptr<nuSQUIDSAtm<nuSQUIDSDecay>> nusquids, marray<double,4>& inistate, std::string type, 
+void ReadFlux(std::shared_ptr<nuSQUIDSAtm<nuSQUIDSDecay>> nusquids, marray<double,4>& inistate, std::string type,
 				std::string input_flux_path, std::string modelname, double GeV){
 
 	std::fill(inistate.begin(),inistate.end(),0);
 	// read file
-	marray<double,2> input_flux = quickread(input_flux_path + "/" + "initial_"+ type + "_atmopheric_" + modelname + ".dat");
+	// marray<double,2> input_flux = quickread(input_flux_path + "/" + "initial_"+ type + "_atmopheric_" + modelname + ".dat");
+	marray<double,2> input_flux = quickread(input_flux_path + "/" + "MicroBooNE_SQuIDSFormat_Flux_NumuAndAntiNuMu.dat");
+	// marray<double,2> input_flux = quickread(input_flux_path + "/" + "initial_pion_atmopheric_PolyGonato_QGSJET-II-04.dat");
+
 
 	marray<double,1> cos_range = nusquids->GetCosthRange();
 	marray<double,1> e_range = nusquids->GetERange();
@@ -85,22 +91,32 @@ int main(int argc, char** argv){
 	bool oscillogram = true;
 	bool quiet = false;
 	// getting input parameters
-	double nu4mass, theta24;
-	nu4mass = 1.0; //Set the mass of the sterile neutrino (eV)
-	theta24 = 1.0; //Set the mixing angle [rad] between sterile and tau flavors.
-
-	//Set coupling (we are assuming m4->m3 decay only for simplicity).
-	double coupling=1.0;
+	double nu4mass, theta24, coupling;
+	if (argc>=4){
+	  nu4mass = std::stof(argv[1]);
+	  theta24 = std::stof(argv[2]);
+	  coupling = std::stof(argv[3]);
+	  std::cout << "nu4mass = " << nu4mass << '\n';
+	  std::cout << "theta24 = " << theta24 << '\n';
+	  std::cout << "coupling = " << coupling << '\n';
+	}
+	else {
+	  nu4mass = 1.0; //Set the mass of the sterile neutrino (eV)                       
+	  theta24 = 1.0; //Set the mixing angle [rad] between sterile and tau flavors.        
+	  //Set coupling (we are assuming m4->m3 decay only for simplicity).               
+	  coupling=1.0;
+	}
 
 	//Toggle, incoherent interactions scalar/pseudoscalar, and decay regeneration.
 	bool iinteraction=true;
-	bool decay_regen=true;
+        bool decay_regen=true;
 	bool pscalar=false;
 
 	//Path for input fluxes
 	std::string input_flux_path = "../fluxes";
-	
+
 	//Flux model
+	// const std::string modelname = "PolyGonato_QGSJET-II-04";
 	const std::string modelname = "PolyGonato_QGSJET-II-04";
 
 	// oscillation physics parameters and nusquids setup
@@ -115,7 +131,7 @@ int main(int argc, char** argv){
 	double m4 = nu4mass;
 	std::vector<double> nu_mass{m1,m2,m3,m4};
 
-	//Allocate memory for rate matrices 
+	//Allocate memory for rate matrices
 	gsl_matrix* couplings;
 	couplings = gsl_matrix_alloc(numneu,numneu);
 	gsl_matrix_set_zero(couplings);
@@ -129,33 +145,14 @@ int main(int argc, char** argv){
 	//The first two arguments (linspaces) define ranges of cos(zenith) and energy over which to simulate, respectively.
 	//The cos(zenith) argument is passed to the wrapping class. The arguments to nuSQUIDSDecay begin at the energy argument.
 	if(!quiet){std::cout << "Declaring nuSQuIDSDecay atmospheric objects" << std::endl;}
-	std::shared_ptr<nuSQUIDSAtm<nuSQUIDSDecay>> nusquids_pion = std::make_shared<nuSQUIDSAtm<nuSQUIDSDecay>>(linspace(-1.,0.2,40),
-																logspace(1.e2*units.GeV,1.e6*units.GeV,150),numneu,both,iinteraction,
-																decay_regen,pscalar,nu_mass,couplings);
-
-	std::shared_ptr<nuSQUIDSAtm<nuSQUIDSDecay>> nusquids_kaon = std::make_shared<nuSQUIDSAtm<nuSQUIDSDecay>>(linspace(-1.,1.0,2),
-																logspace(1.e2*units.GeV,1.e6*units.GeV,150),numneu,both,iinteraction,
+	std::shared_ptr<nuSQUIDSAtm<nuSQUIDSDecay>> nusquids_pion = std::make_shared<nuSQUIDSAtm<nuSQUIDSDecay>>(linspace(0.9999,1.0001,2),
+																linspace(2.5e-2*units.GeV,9.975e0*units.GeV,200),numneu,both,iinteraction,
 																decay_regen,pscalar,nu_mass,couplings);
 
 	//Include tau regeneration in simulation.
-	nusquids_kaon->Set_TauRegeneration(true);
 	nusquids_pion->Set_TauRegeneration(true);
 
 	//Set mixing angles and masses.
-	nusquids_kaon->Set_MixingAngle(0,1,0.563942);
-	nusquids_kaon->Set_MixingAngle(0,2,0.154085);
-	nusquids_kaon->Set_MixingAngle(1,2,0.785398); 
-	nusquids_kaon->Set_MixingAngle(0,3,0.0);
-	nusquids_kaon->Set_MixingAngle(1,3,theta24);
-	nusquids_kaon->Set_MixingAngle(2,3,0.0);
-
-	nusquids_kaon->Set_SquareMassDifference(1,7.65e-05);
-	nusquids_kaon->Set_SquareMassDifference(2,0.00247);
-	nusquids_kaon->Set_SquareMassDifference(3,dm41sq);
-	nusquids_kaon->Set_CPPhase(0,2,0.0);
-	nusquids_kaon->Set_CPPhase(0,3,0.0);
-	nusquids_kaon->Set_CPPhase(1,3,0.0);
-
 	nusquids_pion->Set_MixingAngle(0,1,0.563942);
 	nusquids_pion->Set_MixingAngle(0,2,0.154085);
 	nusquids_pion->Set_MixingAngle(1,2,0.785398);
@@ -176,38 +173,49 @@ int main(int argc, char** argv){
 	nusquids_pion->Set_rel_error(error);
 	nusquids_pion->Set_abs_error(error);
 
-	nusquids_kaon->Set_GSL_step(gsl_odeiv2_step_rkf45);
-	nusquids_kaon->Set_rel_error(error);
-	nusquids_kaon->Set_abs_error(error);
+	std::ostringstream tempObj;
+	// Set Fixed -Point Notation
+	tempObj << std::fixed;
+	// Set precision to 2 digits
+	tempObj << std::setprecision(3);
 
+	std::string outstr = "test_ub_final";
+        outstr += "_m";
+	tempObj << nu4mass;
+        outstr += tempObj.str();
+        outstr += "_t";
+	tempObj.str(std::string());
+	tempObj << theta24;
+        outstr += tempObj.str();
+        outstr += "_c";
+	tempObj.str(std::string());
+	tempObj << coupling;
+        outstr += tempObj.str();
+        std::cout << outstr << '\n';
+
+
+
+	
 	if(!quiet)
 		std::cout << "Setting up the initial fluxes for the nuSQuIDSDecay objects." << std::endl;
 
-	//Read kaon flux and initialize nusquids object with it.
-	marray<double,4> inistate_kaon {nusquids_kaon->GetNumCos(),nusquids_kaon->GetNumE(),2,numneu};
-	ReadFlux(nusquids_kaon,inistate_kaon,std::string("kaon"),input_flux_path,modelname,units.GeV);
-	nusquids_kaon->Set_initial_state(inistate_kaon,flavor);
-	//Write initial flux to text file.
-	if(oscillogram){WriteFlux(nusquids_kaon, std::string("kaon_initial"));}
-	//Evolve flux through the earth. 
-	if(!quiet){std::cout << "Evolving the kaon fluxes." << std::endl;}
-	nusquids_kaon->EvolveState();
-	//Write final flux to text file.
-	if(oscillogram){WriteFlux(nusquids_kaon, std::string("kaon_final"));}
-
 	//Read pion flux and initialize nusquids object with it.
 	marray<double,4> inistate_pion {nusquids_pion->GetNumCos(),nusquids_pion->GetNumE(),2,numneu};
-	ReadFlux(nusquids_pion,inistate_pion,std::string("pion"),input_flux_path,modelname,units.GeV);
+	std::cout << "Made Object\n";
+	ReadFlux(nusquids_pion,inistate_pion,std::string("NOT_USED"),input_flux_path,modelname,units.GeV);
+	std::cout << "Read Object\n";
 	nusquids_pion->Set_initial_state(inistate_pion,flavor);
+	std::cout << "Initial State Set\n";
 	//Write initial flux to text file.
-	if(oscillogram){WriteFlux(nusquids_pion, std::string("pion_initial"));}
-	//Evolve flux through the earth. 
+	//	if(oscillogram){WriteFlux(nusquids_pion, std::string("test_ub_initial"));}
+	//std::cout << "Wrote Initial\n";
+	//Evolve flux through the earth.
 	if(!quiet){std::cout << "Evolving the pion fluxes." << std::endl;}
 	nusquids_pion->EvolveState();
 	//Write final flux to text file.
-	if(oscillogram){WriteFlux(nusquids_pion, std::string("pion_final"));}
-
-	//Free memory for couplings 
+	if(oscillogram){WriteFlux(nusquids_pion, outstr);}
+	std::cout << "Wrote Final\n";
+	//Free memory for couplings
 	gsl_matrix_free(couplings);
 	return 0;
 }
