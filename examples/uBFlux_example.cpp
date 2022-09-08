@@ -36,12 +36,9 @@ automatically, so we do not need to set the majorana flag.
 using namespace nusquids;
 
 bool progressbar = 1; //show progress bar
-double error = 1.0e-15;
-double density = 5.0; // gr/cm^3
-double ye = 0.3; //dimensionless
-double baseline = 0.47; //km
-double hstep = baseline/2000; // km, integration step size
-double hmax = baseline/100; //km, maximum integration step size
+double error = 1.0e-16;
+double density = 2.5; // gr/cm^3
+double ye = 0.3; //dimensionless electron fraction
 
 //Convenience function to write initial and final fluxes to a text file.
 void WriteFlux(std::shared_ptr<nuSQUIDSDecay> nusquids, std::string fname){
@@ -87,31 +84,14 @@ void ReadFlux(std::shared_ptr<nuSQUIDSDecay> nusquids, marray<double,3>& inistat
 	}
 }
 
-//====================================MAIN=========================================//
+//====================================DECAY_EVOLVE=========================================//
 
-int main(int argc, char** argv){
+int Decay_Evolve(double nu4mass, double theta24, double coupling, double L = 0.47, std::string file_output="def"){
 	bool oscillogram = true;
 	bool quiet = false;
-	// getting input parameters
-	double nu4mass, theta24, coupling;
-	if (argc>=4){
-	  nu4mass = std::stof(argv[1]);
-	  theta24 = std::stof(argv[2]);
-	  coupling = std::stof(argv[3]);
-	  std::cout << "nu4mass = " << nu4mass << '\n';
-	  std::cout << "theta24 = " << theta24 << '\n';
-	  std::cout << "coupling = " << coupling << '\n';
-	}
-	else {
-	  nu4mass = 1.0; //Set the mass of the sterile neutrino (eV)
-	  theta24 = 1.0; //Set the mixing angle [rad] between sterile and tau flavors.
-	  //Set coupling (we are assuming m4->m3 decay only for simplicity).
-	  coupling=1.0;
-	}
-
 	//Toggle, incoherent interactions scalar/pseudoscalar, and decay regeneration.
 	bool iinteraction=true;
-        bool decay_regen=true;
+  bool decay_regen=true;
 	bool pscalar=false;
 
 	//Path for input fluxes
@@ -146,13 +126,13 @@ int main(int argc, char** argv){
 	//one for the pion flux component.
 	//The first two arguments (linspaces) define ranges of cos(zenith) and energy over which to simulate, respectively.
 	//The cos(zenith) argument is passed to the wrapping class. The arguments to nuSQUIDSDecay begin at the energy argument.
-	if(!quiet){std::cout << "Declaring nuSQuIDSDecay atmospheric objects" << std::endl;}
+	if(!quiet){std::cout << "Declaring nuSQuIDSDecay objects" << std::endl;}
 	std::shared_ptr<nuSQUIDSDecay> nusquids_pion = std::make_shared<nuSQUIDSDecay>(linspace(2.5e-2*units.GeV,9.975e0*units.GeV,200),numneu,both,iinteraction,
-																decay_regen,pscalar,nu_mass,couplings);
+										decay_regen,pscalar,nu_mass,couplings);
 
 
 
-	const double layer = baseline*units.km;
+	const double layer = L*units.km;
   std::shared_ptr<ConstantDensity> constdens = std::make_shared<ConstantDensity>(density,ye); // density [gr/cm^3[, ye [dimensionless]
   std::shared_ptr<ConstantDensity::Track> track = std::make_shared<ConstantDensity::Track>(layer);	
 
@@ -184,9 +164,9 @@ int main(int argc, char** argv){
 	nusquids_pion->Set_GSL_step(gsl_odeiv2_step_rkf45);
 	nusquids_pion->Set_rel_error(error);
 	nusquids_pion->Set_abs_error(error);
-	nusquids_pion->Set_h(hstep*units.km); //initial integration step size
-	nusquids_pion->Set_h_max(hmax*units.km); //maximum integration step size
-	nusquids_pion->Set_ProgressBar(1);
+	nusquids_pion->Set_h(L/1000*units.km); //initial integration step size
+	nusquids_pion->Set_h_max(L/200*units.km); //maximum integration step size
+	nusquids_pion->Set_ProgressBar(progressbar);
 
 	std::ostringstream tempObj;
 	// Set Fixed -Point Notation
@@ -194,7 +174,8 @@ int main(int argc, char** argv){
 	// Set precision to 2 digits
 	tempObj << std::setprecision(3);
 
-	std::string outstr = "ub_final";
+	std::string outstr = "ub_final_";
+				outstr += file_output;
         outstr += "_m";
 	tempObj << nu4mass;
         outstr += tempObj.str();
@@ -207,7 +188,6 @@ int main(int argc, char** argv){
 	tempObj << coupling;
         outstr += tempObj.str();
         std::cout << outstr << '\n';
-
 
 
 
@@ -232,5 +212,47 @@ int main(int argc, char** argv){
 	std::cout << "Wrote Final\n";
 	//Free memory for couplings
 	gsl_matrix_free(couplings);
+	return 0;
+}
+
+
+
+
+
+
+
+//====================================MAIN=========================================//
+
+int main(int argc, char** argv){
+
+	// getting input parameters
+	double nu4mass, theta24, coupling;
+	if (argc>=4){
+	  nu4mass = std::stof(argv[1]);
+	  theta24 = std::stof(argv[2]);
+	  coupling = std::stof(argv[3]);
+	  std::cout << "nu4mass = " << nu4mass << '\n';
+	  std::cout << "theta24 = " << theta24 << '\n';
+	  std::cout << "coupling = " << coupling << '\n';
+	}
+	else {
+	  nu4mass = 1.0; //Set the mass of the sterile neutrino (eV)
+	  theta24 = 0.785398; //Set the mixing angle [rad] between sterile and tau flavors.
+	  //Set coupling (we are assuming m4->m3 decay only for simplicity).
+	  coupling=1.0;
+	}
+
+	Decay_Evolve(nu4mass, theta24, coupling);
+	
+	/*
+	for (double ci= 0; ci <= 20; ci++){
+	  for (double mi = 0; mi <= 50; mi++){
+	    nu4mass = mi/10;
+	    coupling = ci/4;
+	    Decay_Evolve(nu4mass, theta24, coupling);
+	  }
+	}
+	*/
+
 	return 0;
 }
