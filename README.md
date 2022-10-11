@@ -1,5 +1,10 @@
 # nuSQUIDSDecay
 
+Run `InteractivePlot.ipynb` for the interactive plot.
+
+
+## Original nuSQUIDSDecay description:
+
 A specialization of the nuSQUIDS class that includes neutrino decay.
 For physics details, see Appendix A of arXiv:1711.05921
 
