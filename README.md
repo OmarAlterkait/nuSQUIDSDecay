@@ -55,7 +55,7 @@ For more information you can email me:
 Omar Alterkait (omar.alterkait@tufts.edu)
 
 
-Or email original repository authors:
+Or email original repository/paper authors:
 
 Alexander (Zander) Moss (zander@caltech.edu)
 Marjon Moulai (marjon@mit.edu)
