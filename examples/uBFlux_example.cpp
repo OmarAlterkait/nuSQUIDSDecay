@@ -48,6 +48,8 @@ void WriteFlux(std::shared_ptr<nuSQUIDSDecay> nusquids, std::string fname){
 	std::ofstream ioutput("../output/" + fname + ".dat");
 	for(double enu : nusquids->GetERange()){
 		ioutput << enu << " ";
+		ioutput << nusquids->EvalFlavor(NU_E,enu,NEUTRINO) << " ";
+		ioutput << nusquids->EvalFlavor(NU_E,enu,ANTINEUTRINO) << " ";
 		ioutput << nusquids->EvalFlavor(NU_MU,enu,NEUTRINO) << " ";
 		ioutput << nusquids->EvalFlavor(NU_MU,enu,ANTINEUTRINO) << " ";
 		ioutput << std::endl;
@@ -63,7 +65,7 @@ void ReadFlux(std::shared_ptr<nuSQUIDSDecay> nusquids, marray<double,3>& inistat
 	std::fill(inistate.begin(),inistate.end(),0);
 	// read file
 	// marray<double,2> input_flux = quickread(input_flux_path + "/" + "initial_"+ type + "_atmopheric_" + modelname + ".dat");
-	marray<double,2> input_flux = quickread(input_flux_path + "/" + "MicroBooNE_SQuIDSFormat_Flux_NumuAndAntiNuMu.dat");
+	marray<double,2> input_flux = quickread(input_flux_path + "/" + "MicroBooNE_SQuIDSFormat_Flux_All.dat");
 	// marray<double,2> input_flux = quickread(input_flux_path + "/" + "initial_pion_atmopheric_PolyGonato_QGSJET-II-04.dat");
 
 
@@ -72,13 +74,13 @@ void ReadFlux(std::shared_ptr<nuSQUIDSDecay> nusquids, marray<double,3>& inistat
 	for ( int ei = 0 ; ei < nusquids->GetNumE(); ei++){
 		double enu = e_range[ei]/GeV;
 
-		inistate[ei][0][0] = 0.;
-		inistate[ei][0][1] = input_flux[ei][1];
+		inistate[ei][0][0] = input_flux[ei][1];
+		inistate[ei][0][1] = input_flux[ei][3];
 		inistate[ei][0][2] = 0.;
 		inistate[ei][0][3] = 0.;
 
-		inistate[ei][1][0] = 0.;
-		inistate[ei][1][1] = input_flux[ei][2];
+		inistate[ei][1][0] = input_flux[ei][2];
+		inistate[ei][1][1] = input_flux[ei][4];
 		inistate[ei][1][2] = 0.;
 		inistate[ei][1][3] = 0.;
 	}
@@ -150,7 +152,7 @@ int Decay_Evolve(double nu4mass, double theta24, double coupling, double L = 0.4
 	nusquids_pion->Set_MixingAngle(0,2,0.154085);
 	nusquids_pion->Set_MixingAngle(1,2,0.785398);
 	nusquids_pion->Set_MixingAngle(0,3,0.0);
-	nusquids_pion->Set_MixingAngle(1,3,theta24);
+	nusquids_pion->Set_MixingAngle(1,3,theta24*0.785398); //percent of max
 	nusquids_pion->Set_MixingAngle(2,3,0.0);
 
 	nusquids_pion->Set_SquareMassDifference(1,7.65e-05);
@@ -174,7 +176,7 @@ int Decay_Evolve(double nu4mass, double theta24, double coupling, double L = 0.4
 	// Set precision to 2 digits
 	tempObj << std::setprecision(3);
 
-	std::string outstr = "ub_final_";
+	std::string outstr = "ub_";
 				outstr += file_output;
         outstr += "_m";
 	tempObj << nu4mass;
@@ -237,22 +239,29 @@ int main(int argc, char** argv){
 	}
 	else {
 	  nu4mass = 1.0; //Set the mass of the sterile neutrino (eV)
-	  theta24 = 0.785398; //Set the mixing angle [rad] between sterile and tau flavors.
+	  theta24 = 0.5; //Set the mixing angle [rad] between sterile and tau flavors. Plug in value from 0 to 1 (max mixing).
 	  //Set coupling (we are assuming m4->m3 decay only for simplicity).
 	  coupling=1.0;
 	}
-
-	Decay_Evolve(nu4mass, theta24, coupling);
+	std::srand (time(NULL));
+	int r1 = std::rand() % 100;
+	int r2 = std::rand() % 100;
+	std::cout << r1 << " " << r2 <<'\n';
+	  
+	//	Decay_Evolve(nu4mass, theta24, coupling);
 	
-	/*
-	for (double ci= 0; ci <= 20; ci++){
-	  for (double mi = 0; mi <= 50; mi++){
-	    nu4mass = mi/10;
-	    coupling = ci/4;
-	    Decay_Evolve(nu4mass, theta24, coupling);
-	  }
-	}
-	*/
+	/*		
+	for (double ci= 0; ci <= 40; ci++){
+	  for (double ti = 0; ti <= 20; ti ++){
+	      for (double mi = 0; mi <= 50; mi++){
+		nu4mass = mi/10;
+		theta24 = ti/20;
+		coupling = ci/4;
+		Decay_Evolve(nu4mass, theta24, coupling);
+	      }
+	    }
+       	}
+*/	
 
 	return 0;
 }
