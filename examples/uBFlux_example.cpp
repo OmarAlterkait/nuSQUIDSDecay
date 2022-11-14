@@ -36,7 +36,7 @@ automatically, so we do not need to set the majorana flag.
 using namespace nusquids;
 
 bool progressbar = 1; //show progress bar
-double error = 1.0e-16;
+double error = 1.0e-15;
 double density = 2.5; // gr/cm^3
 double ye = 0.3; //dimensionless electron fraction
 
@@ -166,8 +166,8 @@ int Decay_Evolve(double nu4mass, double theta24, double coupling, double L = 0.4
 	nusquids_pion->Set_GSL_step(gsl_odeiv2_step_rkf45);
 	nusquids_pion->Set_rel_error(error);
 	nusquids_pion->Set_abs_error(error);
-	nusquids_pion->Set_h(L/1000*units.km); //initial integration step size
-	nusquids_pion->Set_h_max(L/200*units.km); //maximum integration step size
+	nusquids_pion->Set_h(L/500*units.km); //initial integration step size
+	nusquids_pion->Set_h_max(L/4*units.km); //maximum integration step size
 	nusquids_pion->Set_ProgressBar(progressbar);
 
 	std::ostringstream tempObj;
@@ -243,12 +243,8 @@ int main(int argc, char** argv){
 	  //Set coupling (we are assuming m4->m3 decay only for simplicity).
 	  coupling=1.0;
 	}
-	std::srand (time(NULL));
-	int r1 = std::rand() % 100;
-	int r2 = std::rand() % 100;
-	std::cout << r1 << " " << r2 <<'\n';
-	  
-	//	Decay_Evolve(nu4mass, theta24, coupling);
+
+	Decay_Evolve(nu4mass, theta24, coupling);
 	
 	/*		
 	for (double ci= 0; ci <= 40; ci++){
